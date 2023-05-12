@@ -3,6 +3,8 @@ import pandas as pd
 import re
 import requests
 from PIL import Image
+import pydotplus
+from rdflib.tools.rdf2dot import rdf2dot
 import imagehash
 from rdflib import Graph, RDF, URIRef
 from rdflib.namespace import RDF, RDFS
@@ -29,31 +31,33 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import CountVectorizer
 
 
+
+
 def csv_to_dict(file):
     '''
-    function to convert 2 columns of a csv into a dictionary.
+    Converts 2 columns of a csv into a dictionary.
     Paramters: 
-        file: csv file
-        
+        file: csv file       
     Returns:
-        dic: a dictionary
+        dict: dictionary
     ''' 
     col1=file.iloc[:,2].values
     col2=file.iloc[:,6].values
-    dic={}
+    dict={}
     for (a,b) in zip(col1,col2):
-        dic[a]=b
-    return dic
+        dict[a]=b
+    return dict
 
 
 def similarity(event):
     '''
-    function to check similarity between all images in a folder using image hashing.
+    Checks similarity between all images in a folder using image hashing.
     Paramters:
-        event (str): a string
+        event (str): string
     Returns: 
         returns void
     ''' 
+    
     # Define the threshold for image similarity
     threshold = 10
 
@@ -80,22 +84,19 @@ def similarity(event):
                 if hashes[j][1] not in similar_images:
                     similar_images.append(hashes[j][1])
 
-    # Remove the similar images
-    for img_path in similar_images:
-        # os.remove(img_path)
-        print(img_path)
+    # Remove similar images
+    # for img_path in similar_images:
+    #     print(img_path)
     
-
 
 def create_dataframe(matrix, tokens):
     '''
-    function to convert a matrix into a dataframe with columns as tokens
-
+    Converts a matrix into a dataframe with columns as tokens
     Parameters:
-        matrix (list): a list of values
-        tokens (list): a list of values
+        matrix (list): list of values
+        tokens (list): list of values
     Returns:
-        df (dataframe) : a 2*2 dataframe with columns and tokens
+        df (dataframe): 2*2 dataframe with columns and tokens
     '''
     doc_names = [f'text{i+1}' for i, _ in enumerate(matrix)]
     df = pd.DataFrame(data=matrix, index=doc_names, columns=tokens)
@@ -104,11 +105,10 @@ def create_dataframe(matrix, tokens):
 
 def text_similarity(text1, text2):
     '''
-    function to check similarity between two strings
-
+    Checks similarity between two strings
     Paramters: 
-        text1 (str) :a string
-        text2 (str) :a string
+        text1 (str): string
+        text2 (str): string
     Returns:
         val (float): cosine similarity between 2 strings
     '''
@@ -120,9 +120,7 @@ def text_similarity(text1, text2):
 
     # Remove stopwords
     stop_words = stopwords.words('english')
-    tokens1 = [token for token in tokens1 if token not in stop_words]
-    
-    
+    tokens1 = [token for token in tokens1 if token not in stop_words] 
     tokens2 = [token for token in tokens2 if token not in stop_words]
     list1=' '.join(tokens1)
     list2=' '.join(tokens2)
@@ -140,19 +138,16 @@ def text_similarity(text1, text2):
 
 def function_article(search_keyword, content):
     '''
-    function to return top 10 videos for a article with on the basis of maximum similarity with the related content of the article
-
+    Returns top 10 videos for an article on the basis of maximum similarity with related content of the article
     Parameters:
         search_keyword (str): string with the title of the article
-        content (str): a string 
+        content (str): string 
     Returns:
-        links (list) : list of top 10 youtube links
+        links (list): list of top 10 youtube links
     ''' 
     # search_keyword="fifa+world+cup"
     html = urllib.request.urlopen("https://www.youtube.com/results?search_query={}".format(search_keyword))
     video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
-    print(video_ids)
-    # print(len(video_ids))
 
     videos={}
     for video_id in video_ids: 
@@ -163,41 +158,34 @@ def function_article(search_keyword, content):
                 text+=dict['text']+" "
             videos[video_id]={'text':text, 'similarity':text_similarity(text, content)}
 
-        except Exception as e: 
-            
-            print("-------------------------")
+        except Exception as e:           
+            # print("-------------------------")
             pass
-            
-
-
     
-    print(len(videos))
     temp = {k: v for k, v in sorted(videos.items(), key=lambda x:x[1]['similarity'], reverse=True)}
     sorted_videos= {k:v for k, v in itertools.islice(temp.items(), 10)}
-    print(sorted_videos)
-    print(len(sorted_videos))
+    # print(sorted_videos)
     links= ['https://www.youtube.com/watch?v=' + item for item in list(sorted_videos.keys())]
+    print("Videos retrieved.")
+    
     return links
+
 
 def function(search_keyword, wiki_search):
     '''
-    function to return top 10 videos for a event on the basis of maximum similarity with the wikipedia summary of the event
-
+    Returns top 10 videos for an event on the basis of maximum similarity with the wikipedia summary of the event
     Parameters:
         search_keyword (str): string with the title of the article
-        wiki_search (str): a string
+        wiki_search (str): string
     Returns:
         links (list) : list of top 10 youtube links
     ''' 
-    
+  # search_keyword="fifa+world+cup"
     html = urllib.request.urlopen("https://www.youtube.com/results?search_query={}".format(search_keyword))
     video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
-    print(video_ids)
-    
-
     wiki = wikipedia.page(wiki_search)
     wiki_content = wiki.summary
-    print(wiki_content)
+    # print(wiki_content)s
     videos={}
     for video_id in video_ids: 
         try:     
@@ -206,45 +194,39 @@ def function(search_keyword, wiki_search):
             for dict in list_:
                 text+=dict['text']+" "
             videos[video_id]={'text':text, 'similarity':text_similarity(text, wiki_content)}
-
         except Exception as e: 
-            
-            print("-------------------------")
             pass
 
-
-
-    print(len(videos))
+    print("{} videos retrieved. Now filtering.".format(len(videos)))
     temp = {k: v for k, v in sorted(videos.items(), key=lambda x:x[1]['similarity'], reverse=True)}
     sorted_videos= {k:v for k, v in itertools.islice(temp.items(), 10)}
-    print(sorted_videos)
-    print(len(sorted_videos))
+    print("Top ten videos retrieved")
     links= ['https://www.youtube.com/watch?v=' + item for item in list(sorted_videos.keys())]
     return links
 
 
-
-def visualize(g):
+def visualize(graph):
+    from IPython.display import display, Image
     '''
-    converts a rdflib graph to an png image
+    converts a rdflib graph to a png image
     Parameters:
-        g (graph): an rdflib graph
+        graph: an rdflib graph
     Returns:
         void
     '''
     stream = io.StringIO()
-    rdf2dot(g, stream, opts = {display})
+    rdf2dot(graph, stream, opts = {display})
     dg = pydotplus.graph_from_dot_data(stream.getvalue())
     png = dg.create_png()
     display(Image(png))
 
 def fetch_wikidata_api(query):
     '''
-    function to return iri of the query from wikidata
+    Returns the IRI of the query from wikidata
     Parameters:
-        query(str): a string
+        query (str): string
     Returns: 
-        s (str) :  a string with iri of the query
+        IRI (str): string with IRI of the query
     '''
     API_ENDPOINT = "https://www.wikidata.org/w/api.php"
     params = {
@@ -254,8 +236,8 @@ def fetch_wikidata_api(query):
         'search': query
     }
     r = requests.get(API_ENDPOINT, params = params)
-    s='http:'+ r.json()['search'][0]['url']
-    return s
+    IRI='http:'+ r.json()['search'][0]['url']
+    return IRI
 
 EKG = Graph()
 df = pd.read_csv('dataset.csv')
@@ -287,9 +269,6 @@ for language in df['Language'].unique():
 for event in df['Event'].unique():
     Event_dict[event]=fetch_wikidata_api(event)
     EKG.add((URIRef(Event_dict[event]), RDF.type, Event))
-    
-    
-    #####images part 
     #downloading images for each event
     count=5
     query=event
@@ -298,7 +277,6 @@ for event in df['Event'].unique():
     print(images) 
     
     img_folder = "./"+event
-    # similarity(event)
     count=0
     for file in os.listdir(img_folder):
         if count>10:
@@ -308,7 +286,6 @@ for event in df['Event'].unique():
         width, height = img.size
         img_size=f'{width} x {height}'
         filename = os.path.splitext(os.path.basename(file))[0]
-        # print(filename)
         
         uri_image=URIRef(images[filename])
         print(filename +" " + uri_image)
@@ -347,7 +324,7 @@ for article in df['Article Title'].unique():
             img_urls.append(img['src'])
             url=img['src']
             if url[0]=='h':
-                print(url)
+                # print(url)
                 response = requests.get(url)
                 folder_path = "./"+'harvard'
                 if not os.path.exists(folder_path):
@@ -365,21 +342,18 @@ for article in df['Article Title'].unique():
             EKG.add((uri_image, size, rdflib.Literal(img_size)))
             i+=1
         
-
         for para in para_tags:
             para_texts.append(para.get_text())
-        # video=URIRef(fetch_wikidata_api('video'))
+      
         keyword=article.replace(' ','+')
+
         #list for top 10 links related to the event
         links=function_article(keyword, para_texts)
-        print(links)
+        # print(links)
         for i in links:
             uri_link=URIRef(i)
-            EKG.add((uri_link, video, URIRef(Article_dict[article])))
-    
+            EKG.add((uri_link, video, URIRef(Article_dict[article])))  
     j+=1
-
-
     
 i=0
 for index, row in df.iterrows():
@@ -398,13 +372,9 @@ for index, row in df.iterrows():
     EKG.add((article_URI, RDF.langString, language_URI))
     EKG.add((article_URI, based_on, event_URI))
     EKG.add((article_URI, published_in, publisher_URI))
-    # EKG.add((article_URI,RDF.subject, event_URI))
-
 
 
 EKG.serialize(destination='output.xml',format='xml')
-
-
 G = rdflib_to_networkx_multidigraph(EKG)
 
 # Plot Networkx instance of RDF Graph
@@ -415,13 +385,6 @@ nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
 nx.draw(G, with_labels=True)
 plt.axis('off')
 plt.savefig('output.pdf')
-#if not in interactive mode for 
 plt.show()
-import io
-import pydotplus
-from IPython.display import display, Image
-from rdflib.tools.rdf2dot import rdf2dot
-
-
 
 visualize(EKG)
