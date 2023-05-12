@@ -1,3 +1,4 @@
+from bs4 import BeautifulSoup
 import pandas as pd
 import re
 import requests
@@ -29,6 +30,14 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 
 def csv_to_dict(file):
+    '''
+    function to convert 2 columns of a csv into a dictionary.
+    Paramters: 
+        file: csv file
+        
+    Returns:
+        dic: a dictionary
+    ''' 
     col1=file.iloc[:,2].values
     col2=file.iloc[:,6].values
     dic={}
@@ -38,6 +47,13 @@ def csv_to_dict(file):
 
 
 def similarity(event):
+    '''
+    function to check similarity between all images in a folder using image hashing.
+    Paramters:
+        event (str): a string
+    Returns: 
+        returns void
+    ''' 
     # Define the threshold for image similarity
     threshold = 10
 
@@ -72,13 +88,30 @@ def similarity(event):
 
 
 def create_dataframe(matrix, tokens):
+    '''
+    function to convert a matrix into a dataframe with columns as tokens
 
+    Parameters:
+        matrix (list): a list of values
+        tokens (list): a list of values
+    Returns:
+        df (dataframe) : a 2*2 dataframe with columns and tokens
+    '''
     doc_names = [f'text{i+1}' for i, _ in enumerate(matrix)]
     df = pd.DataFrame(data=matrix, index=doc_names, columns=tokens)
     return(df)
 
 
 def text_similarity(text1, text2):
+    '''
+    function to check similarity between two strings
+
+    Paramters: 
+        text1 (str) :a string
+        text2 (str) :a string
+    Returns:
+        val (float): cosine similarity between 2 strings
+    '''
     tokens1 = word_tokenize(text1)
     tokens2 = word_tokenize(text2)
     lemmatizer = WordNetLemmatizer()
@@ -88,68 +121,56 @@ def text_similarity(text1, text2):
     # Remove stopwords
     stop_words = stopwords.words('english')
     tokens1 = [token for token in tokens1 if token not in stop_words]
-    # print(type(tokens1))
+    
     
     tokens2 = [token for token in tokens2 if token not in stop_words]
     list1=' '.join(tokens1)
     list2=' '.join(tokens2)
-    # print(list1)
-    # print(list2)
+
     data=[list1, list2]
-    # print(tokens1)
-    # print(tokens2)
+
     # Create the TF-IDF vectors
     vectorizer = TfidfVectorizer()
     vector_matrix = vectorizer.fit_transform(data)
-    # vector_matrix.toarray()
     similarity = cosine_similarity(vector_matrix)
     df=create_dataframe(similarity,['text1','text2'])
     val = df['text2'].values[0]
-    # print(df)
-    # # print(type(similarity))
+
     return val
 
 def function_article(search_keyword, content):
+    '''
+    function to return top 10 videos for a article with on the basis of maximum similarity with the related content of the article
+
+    Parameters:
+        search_keyword (str): string with the title of the article
+        content (str): a string 
+    Returns:
+        links (list) : list of top 10 youtube links
+    ''' 
     # search_keyword="fifa+world+cup"
     html = urllib.request.urlopen("https://www.youtube.com/results?search_query={}".format(search_keyword))
     video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
     print(video_ids)
     # print(len(video_ids))
 
-    # wiki = wikipedia.page(wiki_search)
-    # wiki_content = wiki.summary
-    # print(wiki_content)
     videos={}
     for video_id in video_ids: 
-        # list_=YouTubeTranscriptApi.get_transcript(video_id)
-        # text=""
-        # for dict in list_:
-        #     text+=dict['text']+" "
-        #     # print(text)
-        #     # print(text)
-        #     # sim = text_similarity(text, wiki_content)
-        #     # print(sim)
-        # videos[video_id]={'text':text, 'similarity':text_similarity(text, wiki_content)}
         try:     
             list_=YouTubeTranscriptApi.get_transcript(video_id)
             text=""
             for dict in list_:
                 text+=dict['text']+" "
-            # print(text)
-            # print(text)
-            # sim = text_similarity(text, wiki_content)
-            # print(sim)
             videos[video_id]={'text':text, 'similarity':text_similarity(text, content)}
 
         except Exception as e: 
             
             print("-------------------------")
             pass
-            # print("subtitles are disabled for this video")
+            
 
 
-    # print(videos)
-    # videos= { '0sojFEON90k': {'text': "hwhdkwhe", 'similarity':0.73828}, '00000' : {'text': 'heiah', 'similarity':0.73872}}
+    
     print(len(videos))
     temp = {k: v for k, v in sorted(videos.items(), key=lambda x:x[1]['similarity'], reverse=True)}
     sorted_videos= {k:v for k, v in itertools.islice(temp.items(), 10)}
@@ -159,46 +180,40 @@ def function_article(search_keyword, content):
     return links
 
 def function(search_keyword, wiki_search):
-    # search_keyword="fifa+world+cup"
+    '''
+    function to return top 10 videos for a event on the basis of maximum similarity with the wikipedia summary of the event
+
+    Parameters:
+        search_keyword (str): string with the title of the article
+        wiki_search (str): a string
+    Returns:
+        links (list) : list of top 10 youtube links
+    ''' 
+    
     html = urllib.request.urlopen("https://www.youtube.com/results?search_query={}".format(search_keyword))
     video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
     print(video_ids)
-    # print(len(video_ids))
+    
 
     wiki = wikipedia.page(wiki_search)
     wiki_content = wiki.summary
     print(wiki_content)
     videos={}
     for video_id in video_ids: 
-        # list_=YouTubeTranscriptApi.get_transcript(video_id)
-        # text=""
-        # for dict in list_:
-        #     text+=dict['text']+" "
-        #     # print(text)
-        #     # print(text)
-        #     # sim = text_similarity(text, wiki_content)
-        #     # print(sim)
-        # videos[video_id]={'text':text, 'similarity':text_similarity(text, wiki_content)}
         try:     
             list_=YouTubeTranscriptApi.get_transcript(video_id)
             text=""
             for dict in list_:
                 text+=dict['text']+" "
-            # print(text)
-            # print(text)
-            # sim = text_similarity(text, wiki_content)
-            # print(sim)
             videos[video_id]={'text':text, 'similarity':text_similarity(text, wiki_content)}
 
         except Exception as e: 
             
             print("-------------------------")
             pass
-            # print("subtitles are disabled for this video")
 
 
-    # print(videos)
-    # videos= { '0sojFEON90k': {'text': "hwhdkwhe", 'similarity':0.73828}, '00000' : {'text': 'heiah', 'similarity':0.73872}}
+
     print(len(videos))
     temp = {k: v for k, v in sorted(videos.items(), key=lambda x:x[1]['similarity'], reverse=True)}
     sorted_videos= {k:v for k, v in itertools.islice(temp.items(), 10)}
@@ -210,6 +225,13 @@ def function(search_keyword, wiki_search):
 
 
 def visualize(g):
+    '''
+    converts a rdflib graph to an png image
+    Parameters:
+        g (graph): an rdflib graph
+    Returns:
+        void
+    '''
     stream = io.StringIO()
     rdf2dot(g, stream, opts = {display})
     dg = pydotplus.graph_from_dot_data(stream.getvalue())
@@ -217,6 +239,13 @@ def visualize(g):
     display(Image(png))
 
 def fetch_wikidata_api(query):
+    '''
+    function to return iri of the query from wikidata
+    Parameters:
+        query(str): a string
+    Returns: 
+        s (str) :  a string with iri of the query
+    '''
     API_ENDPOINT = "https://www.wikidata.org/w/api.php"
     params = {
         'action': 'wbsearchentities',
@@ -225,7 +254,8 @@ def fetch_wikidata_api(query):
         'search': query
     }
     r = requests.get(API_ENDPOINT, params = params)
-    return ('http:'+ r.json()['search'][0]['url'])
+    s='http:'+ r.json()['search'][0]['url']
+    return s
 
 EKG = Graph()
 df = pd.read_csv('dataset.csv')
@@ -298,52 +328,56 @@ for event in df['Event'].unique():
         EKG.add((uri_link, video, URIRef(Event_dict[event])))
 
 Article_dict=csv_to_dict(df)
-# for article in df['Article Title'].unique():
+j=1
+for article in df['Article Title'].unique():
+    # running for two articles
+    if j<=2:
+        url=Article_dict[article]
+        page=requests.get(url)
+        soup = BeautifulSoup(page.content, 'html.parser')
+
+        # finding img src links
+        img_tags = soup.find_all('img')
+        para_tags = soup.find_all('p')
+        img_urls=[]
+        para_texts=[]
+        i=1
+        image_dict={}
+        for img in img_tags:
+            img_urls.append(img['src'])
+            url=img['src']
+            if url[0]=='h':
+                print(url)
+                response = requests.get(url)
+                folder_path = "./"+'harvard'
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+                name='image'+str(i)+'.jpg'
+                file_path = os.path.join(folder_path, name)
+                image_dict[name]=url
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+                i+=1
+
+            uri_image=URIRef(image_dict[name])
+            #adding size and relation to the image
+            EKG.add((uri_image, RP,URIRef(Article_dict[article] )))
+            EKG.add((uri_image, size, rdflib.Literal(img_size)))
+            i+=1
+        
+
+        for para in para_tags:
+            para_texts.append(para.get_text())
+        # video=URIRef(fetch_wikidata_api('video'))
+        keyword=article.replace(' ','+')
+        #list for top 10 links related to the event
+        links=function_article(keyword, para_texts)
+        print(links)
+        for i in links:
+            uri_link=URIRef(i)
+            EKG.add((uri_link, video, URIRef(Article_dict[article])))
     
-#     url=Article_dict[article]
-#     page=requests.get(url)
-#     soup = BeautifulSoup(page.content, 'html.parser')
-
-#     # finding img src links
-#     img_tags = soup.find_all('img')
-#     para_tags = soup.find_all('p')
-#     img_urls=[]
-#     para_texts=[]
-#     i=1
-#     image_dict={}
-#     for img in img_tags:
-#         img_urls.append(img['src'])
-#         url=img['src']
-#         if url[0]=='h':
-#             print(url)
-#             response = requests.get(url)
-#             folder_path = "./"+'harvard'
-#             if not os.path.exists(folder_path):
-#                 os.makedirs(folder_path)
-#             name='image'+str(i)+'.jpg'
-#             file_path = os.path.join(folder_path, name)
-#             image_dict[name]=url
-#             with open(file_path, "wb") as f:
-#                 f.write(response.content)
-#             i+=1
-
-#         uri_image=URIRef(image_dict[name])
-#         #adding size and relation to the image
-#         EKG.add((uri_image, RP,URIRef(Article_dict[article] )))
-#         EKG.add((uri_image, size, rdflib.Literal(img_size)))
-#         i+=1
-    
-
-#     for para in para_tags:
-#         para_texts.append(para.get_text())
-#     # video=URIRef(fetch_wikidata_api('video'))
-#     keyword=article.replace(' ','+')
-#     #list for top 10 links related to the event
-#     links=function_article(keyword, para_texts)
-#     print(links)
-#     for i in links:
-#         uri_link=URIRef(i)
-#         EKG.add((uri_link, video, URIRef(Article_dict[article])))
+    j+=1
 
 
     
@@ -388,11 +422,6 @@ import pydotplus
 from IPython.display import display, Image
 from rdflib.tools.rdf2dot import rdf2dot
 
-def visualize(g):
-    stream = io.StringIO()
-    rdf2dot(g, stream, opts = {display})
-    png = pydotplus.graph_from_dot_data(stream.getvalue())
-    png.write_png("ekg.png")
-    # display(Image(png))
+
 
 visualize(EKG)
